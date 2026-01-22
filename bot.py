@@ -6,7 +6,6 @@ from aiogram.utils import executor
 
 # Токен берём из переменной окружения
 API_TOKEN = os.environ.get("API_TOKEN")
-
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
@@ -23,7 +22,10 @@ last_messages = {}
 
 # Проверка на ссылки
 def has_link(text):
-    return "http://" in text or "https://" in text or "t.me/" in text
+    import re
+    # Ловим http, https, t.me, www и домены с точкой
+    pattern = r"(https?://\S+|t\.me/\S+|www\.\S+|\S+\.\w+)"
+    return re.search(pattern, text)
 
 # Основная функция модерации
 @dp.message_handler()
@@ -35,10 +37,7 @@ async def auto_moderate(message: types.Message):
     chat_id = message.chat.id
     text = message.text.lower()
 
-    # Убрана проверка на админство → бот модератирует всех
-    # if await is_admin(chat_id, user_id):
-    #     return
-
+    # Модерация всех пользователей (включая админов)
     now = time.time()
 
     # антифлуд
