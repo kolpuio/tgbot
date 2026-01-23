@@ -4,20 +4,23 @@ import re
 import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ChatPermissions, ChatMemberUpdated
-from aiogram.utils import executor
 from aiohttp import web
 
 # ================================
-# Настройки Telegram-бота
+# Настройки бота
 # ================================
-API_TOKEN = os.environ.get("API_TOKEN")
+API_TOKEN = os.environ.get("API_TOKEN")  # Токен из переменной окружения
+WEBHOOK_PATH = f"/webhook/{API_TOKEN}"
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL")  # Например: https://your-app.onrender.com/webhook/<token>
+PORT = int(os.environ.get("PORT", 5000))
+
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
-MAX_WARNINGS = 3      # сколько нарушений до мута
-MUTE_TIME = 600       # длительность мута в секундах (10 минут)
-FLOOD_TIME = 3        # минимальный интервал между сообщениями одного пользователя
-SPAM_LIMIT = 3        # сколько одинаковых сообщений подряд до удаления
+MAX_WARNINGS = 3
+MUTE_TIME = 600
+FLOOD_TIME = 3
+SPAM_LIMIT = 3
 
 user_warnings = {}
 last_message_time = {}
@@ -31,7 +34,7 @@ def has_link(text):
     return re.search(pattern, text)
 
 # ================================
-# Основная функция модерации
+# Модерация сообщений
 # ================================
 @dp.message_handler()
 async def auto_moderate(message: types.Message):
@@ -50,7 +53,7 @@ async def auto_moderate(message: types.Message):
         return
     last_message_time[user_id] = now
 
-    # антиспам (повтор сообщений)
+    # антиспам
     last_text, count = last_messages.get(user_id, ("", 0))
     if text == last_text:
         count += 1
@@ -70,7 +73,7 @@ async def auto_moderate(message: types.Message):
         return
 
 # ================================
-# Учёт нарушений и мут
+# Учет нарушений и мут
 # ================================
 def register_violation(user_id, chat_id):
     user_warnings[user_id] = user_warnings.get(user_id, 0) + 1
@@ -100,24 +103,27 @@ async def welcome_new_member(chat_member: ChatMemberUpdated):
         )
 
 # ================================
-# Пустой HTTP-сервер для Render
+# Webhook для Render
 # ================================
 async def handle(request):
-    return web.Response(text="Bot is running ✅")
+    update = types.Update(**await request.json())
+    await dp.process_update(update)
+    return web.Response()
 
-def start_web_server():
-    port = int(os.environ.get("PORT", 5000))
-    app = web.Application()
-    app.router.add_get("/", handle)
-    web.run_app(app, port=port)
+app = web.Application()
+app.router.add_post(WEBHOOK_PATH, handle)
 
 # ================================
-# Запуск
+# Запуск веб-сервера и установка webhook
 # ================================
+async def on_startup(app):
+    await bot.set_webhook(WEBHOOK_URL)
+
+async def on_cleanup(app):
+    await bot.delete_webhook()
+
+app.on_startup.append(on_startup)
+app.on_cleanup.append(on_cleanup)
+
 if __name__ == "__main__":
-    # Запуск веб-сервера в отдельном потоке
-    loop = asyncio.get_event_loop()
-    loop.run_in_executor(None, start_web_server)
-
-    print("🤖 Telegram Bot запущен!")
-    executor.start_polling(dp, skip_updates=True)
+    web.run_app(app, port=PORT)
