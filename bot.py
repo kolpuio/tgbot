@@ -3,6 +3,7 @@ import time
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ChatPermissions
 from aiogram.utils import executor
+import re
 
 # Токен берём из переменной окружения
 API_TOKEN = os.environ.get("API_TOKEN")
@@ -10,10 +11,10 @@ bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
 # Настройки бота
-MAX_WARNINGS = 3
-MUTE_TIME = 600
-FLOOD_TIME = 3
-SPAM_LIMIT = 3
+MAX_WARNINGS = 3      # сколько нарушений до мута
+MUTE_TIME = 600       # длительность мута в секундах (10 минут)
+FLOOD_TIME = 3        # минимальный интервал между сообщениями одного пользователя
+SPAM_LIMIT = 3        # сколько одинаковых сообщений подряд до удаления
 
 # Хранение данных пользователей
 user_warnings = {}
@@ -22,7 +23,6 @@ last_messages = {}
 
 # Проверка на ссылки
 def has_link(text):
-    import re
     pattern = r"(https?://\S+|t\.me/\S+|www\.\S+|\S+\.\w+)"
     return re.search(pattern, text)
 
@@ -35,7 +35,6 @@ async def auto_moderate(message: types.Message):
     user_id = message.from_user.id
     chat_id = message.chat.id
     text = message.text.lower()
-
     now = time.time()
 
     # антифлуд
@@ -46,7 +45,7 @@ async def auto_moderate(message: types.Message):
             return
     last_message_time[user_id] = now
 
-    # антиспам
+    # антиспам (повтор сообщений)
     last_text, count = last_messages.get(user_id, ("", 0))
     if text == last_text:
         count += 1
