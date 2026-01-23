@@ -82,6 +82,6 @@ def register_violation(user_id, chat_id):
         user_warnings[user_id] = 0
 
 # Запуск бота
-if name == "__main__":
+if name == "main":
     print("🤖 Бот запущен в тихом режиме")
     executor.start_polling(dp, skip_updates=True)
