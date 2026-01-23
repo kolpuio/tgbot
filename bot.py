@@ -23,7 +23,6 @@ last_messages = {}
 # Проверка на ссылки
 def has_link(text):
     import re
-    # Ловим http, https, t.me, www и домены с точкой
     pattern = r"(https?://\S+|t\.me/\S+|www\.\S+|\S+\.\w+)"
     return re.search(pattern, text)
 
@@ -37,7 +36,6 @@ async def auto_moderate(message: types.Message):
     chat_id = message.chat.id
     text = message.text.lower()
 
-    # Модерация всех пользователей (включая админов)
     now = time.time()
 
     # антифлуд
@@ -48,7 +46,7 @@ async def auto_moderate(message: types.Message):
             return
     last_message_time[user_id] = now
 
-    # антиспам (повтор сообщений)
+    # антиспам
     last_text, count = last_messages.get(user_id, ("", 0))
     if text == last_text:
         count += 1
@@ -67,7 +65,7 @@ async def auto_moderate(message: types.Message):
         register_violation(user_id, chat_id)
         return
 
-# Функция учёта нарушений и мута
+# Учёт нарушений и мут
 def register_violation(user_id, chat_id):
     user_warnings[user_id] = user_warnings.get(user_id, 0) + 1
     if user_warnings[user_id] >= MAX_WARNINGS:
