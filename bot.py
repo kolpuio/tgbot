@@ -85,3 +85,4 @@ def register_violation(user_id, chat_id):
 if name == "__main__":
     print("🤖 Бот запущен в тихом режиме")
     executor.start_polling(dp, skip_updates=True)
+
